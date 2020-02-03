@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<launch>
+	<arg name="CONFIG_PATH" default="$(find tum_ics_skin_tutorials)/launch/configs"/>
+
+	<!--group ns="skin">
+	<group ns="viz"-->
+
+	<node name="load_and_view_patches_test" 
+		pkg="tum_ics_skin_tutorials" 
+		type="load_and_view_patches_tut" 
+		args="$(arg CONFIG_PATH)" output="screen">
+
+		<rosparam file="$(find tum_ics_skin_tutorials)/launch/configs/patch_list.yaml" command="load" />	
+
+	</node>
+
+	<!--/group>
+	</group-->
+
+</launch>

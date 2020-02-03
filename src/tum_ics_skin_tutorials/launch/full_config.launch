@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<launch>
+	<!-- This variable indicates the path where the skin config file (to be created) will be saved /-->  
+	<arg name="DEFAULT_PATH" default="$(find tum_ics_skin_tutorials)/launch/configs"/>
+
+	<node name="$(anon full_config_test)" 
+		pkg="tum_ics_skin_full_config" 
+		type="full_config" 
+		args="$(arg DEFAULT_PATH)"
+		output="screen">
+		<rosparam file="$(find tum_ics_skin_tutorials)/launch/configs/skin_driver_ns_list.yaml" command="load" />
+		<rosparam file="$(find tum_ics_skin_tutorials)/launch/configs/base_frame_list.yaml" command="load" />
+	</node>
+</launch>

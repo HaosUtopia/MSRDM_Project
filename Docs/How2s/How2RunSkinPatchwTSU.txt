@@ -1,0 +1,61 @@
+#How to run the UR10 robot with skin
+
+#In your workspace (/home/user/ros/workspace/ur10_tutorial_ws/src), you will find three packages:
+tum_ics_skin_tutorials
+tum_ics_ur10_controller_tutorial
+tum_ics_ur10_robot
+
+#This packages contain similar information with small changes to have the gripper.
+
+#change the local network to RobotNet
+#Open a terminal and ping the skin TSU
+ping 192.168.1.11
+
+#Make sure that the TSU replies, if not unplug the TSU from the power line and plug it back. You should keep the ping command running during this procedure.
+
+#run the skin driver for a TSU
+roslaunch tum_ics_skin_driver_events skin_driver_tsu.launch IP_ADDRESS:=192.168.1.11 PORT:=2337
+#In the same terminal, you can run the color feedback command to verify the skin is running
+cf on
+
+#In  another terminal, run the robot visualization (rviz) with the Lacquey gripper.
+roslaunch tum_ics_ur10_bringup bringUR10-lacquey.launch
+
+#In this new visualization, you should see the robot and the gripper.
+
+## Simulation
+#Make sure that the robot config file (tum_ics_ur10_controller_tutorial/launch/configs/configUR10_FD.ini) is set to "sim".
+
+#Run in a new terminal 
+roslaunch tum_ics_ur10_controller_tutorial testSimpleEffortCtrlwS.launch
+
+#The main difference with the previous version is that this controller will set a rosparam variable --robotReal-- that will be used by the gripper 
+
+# In a new terminal, run the lacquey gripper driver. When the robot is running in simulation, the gripper will also run in this mode. 
+roslaunch tum_ics_ur10_controller_tutorial lacqueyGripperServerUR10wS.launch
+
+# In a different terminal, you can call the state gripper service to open/close the gripper
+rosservice call /UR10/setGripperState "newState: 'open'"
+rosservice call /UR10/setGripperState "newState: 'free'"
+
+##Real Robot
+#Make sure that the robot config file (tum_ics_ur10_controller_tutorial/launch/configs/configUR10_FD.ini) is set to "real".
+
+#in a terminal, run the script manager. The robot should be initialized and ready for commands.
+#NOTE: Hand in the emergency button, eyes on the robot!!!!!!!!!!!!!
+
+roslaunch tum_ics_ur_robot_manager robot_script_manager_ur10.launch
+
+#Run in a new terminal 
+roslaunch tum_ics_ur10_controller_tutorial testSimpleEffortCtrlwS.launch
+
+#The main difference with the previous version is that this controller will set a rosparam variable --robotReal-- that will be used by the gripper 
+
+# In a new terminal, run the lacquey gripper driver. When the robot is running in simulation, the gripper will also run in this mode. 
+roslaunch tum_ics_ur10_controller_tutorial lacqueyGripperServerUR10wS.launch
+
+# In a different terminal, you can call the state gripper service to open/close the gripper
+rosservice call /UR10/setGripperState "newState: 'open'"
+rosservice call /UR10/setGripperState "newState: 'free'"
+
+
