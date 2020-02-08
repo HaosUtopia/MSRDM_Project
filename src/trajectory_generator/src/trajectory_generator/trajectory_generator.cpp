@@ -71,6 +71,12 @@ TrajGen::TrajGen(const ros::NodeHandle& nh, double delta_t)
     ok = false;
   }
   
+  if (!traj_nh.getParam("window_min_v", window_min_v))
+  {
+    ROS_ERROR_STREAM("Could not find 'window_min_v' parameter (namespace: " << traj_nh.getNamespace() << ").");
+    ok = false;
+  }
+  
   if (!traj_nh.getParam("window_max_v", window_max_v))
   {
     ROS_ERROR_STREAM("Could not find 'window_max_v' parameter (namespace: " << traj_nh.getNamespace() << ").");
@@ -83,6 +89,7 @@ TrajGen::TrajGen(const ros::NodeHandle& nh, double delta_t)
     ok = false;
   }
   
+  window_min_ds = window_min_v * delta_t;
   window_max_ds = window_max_v * delta_t;
   last_window_x = window_init_x;
   last_window_y = window_init_y;
@@ -123,8 +130,9 @@ bool TrajGen::getCurrPos(double& ox, double& oy, bool& oled)
   }
 }
 
-double TrajGen::savitzkyGolayFilter()
+void TrajGen::lowPassFilter(double& value, const double& pre_value)
 {
+  value = (value + pre_value) / 2;
 }
 
 void TrajGen::getPointCallback(const std_msgs::Int32MultiArray::ConstPtr& msg)
@@ -144,8 +152,7 @@ void TrajGen::getPointCallback(const std_msgs::Int32MultiArray::ConstPtr& msg)
     {
       last_window_x += window_max_ds * (window_x - last_window_x) / distance;
       last_window_y += window_max_ds * (window_y - last_window_y) / distance;
-    
-      ROS_INFO_STREAM("last_windown_x = " << last_window_x << "," <<"last_window_y = " << last_window_y);
+      
       trajectory.push_back(Position(last_window_x, last_window_y, false));
       distance = sqrt(pow(window_y - last_window_y, 2) + pow(window_x - last_window_x, 2));
     }
@@ -162,9 +169,12 @@ void TrajGen::getPointCallback(const std_msgs::Int32MultiArray::ConstPtr& msg)
     }
   }
   
-  //last_window_x = window_x;
-  //last_window_y = window_y;
-  //trajectory.push_back(Position(window_x, window_y, true));
+  if (distance > window_min_ds)
+  {
+    last_window_x = window_x;
+    last_window_y = window_y;
+    trajectory.push_back(Position(last_window_x, last_window_y, true));
+  }
 }
 
 }

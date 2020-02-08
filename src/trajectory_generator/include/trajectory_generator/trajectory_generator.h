@@ -33,7 +33,7 @@ protected:
   };
   
 private:
-  double savitzkyGolayFilter();
+  void lowPassFilter(double& value, const double& prev_value);
   void getPointCallback(const std_msgs::Int32MultiArray::ConstPtr& msg);
   
   double point_min_x;
@@ -46,7 +46,9 @@ private:
   double window_max_y;
   double window_init_x;
   double window_init_y;
+  double window_min_v; // minimum velocity
   double window_max_v; // maximum velocity
+  double window_min_ds; // minimum distance per step
   double window_max_ds; // maximum distance per step
   double window_max_d; // maximum distance inside a trajectory
   
