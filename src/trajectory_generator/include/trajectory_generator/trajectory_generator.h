@@ -7,6 +7,8 @@
 #include <ros/ros.h>
 #include <boost/thread/mutex.hpp>
 
+// Touchpad message type
+#include <std_msgs/Int32MultiArray.h>
 
 namespace trajectory_generator
 {
@@ -32,7 +34,7 @@ protected:
   
 private:
   double savitzkyGolayFilter();
-  void getPointCallback();
+  void getPointCallback(const std_msgs::Int32MultiArray::ConstPtr& msg);
   
   double point_min_x;
   double point_max_x;

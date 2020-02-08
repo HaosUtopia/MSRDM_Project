@@ -87,7 +87,7 @@ TrajGen::TrajGen(const ros::NodeHandle& nh, double delta_t)
   last_window_x = window_init_x;
   last_window_y = window_init_y;
   
-  //sub_point = root_nh.subscribe("", 100, &TrajGen::getPointCallback, this);
+  sub_point = root_nh.subscribe("finger_position", 100, &TrajGen::getPointCallback, this);
   
   if (ok)
   {
@@ -127,8 +127,10 @@ double TrajGen::savitzkyGolayFilter()
 {
 }
 
-void TrajGen::getPointCallback()
+void TrajGen::getPointCallback(const std_msgs::Int32MultiArray::ConstPtr& msg)
 {
+  point_x = msg->data[0];
+  point_y = msg->data[1];
   window_x = (point_x - point_min_x) / (point_max_x - point_min_x) * (window_max_x - window_min_x) + window_min_x;
   window_y = (point_y - point_min_y) / (point_max_y - point_min_y) * (window_max_y - window_min_y) + window_min_y;
   
@@ -143,6 +145,7 @@ void TrajGen::getPointCallback()
       last_window_x += window_max_ds * (window_x - last_window_x) / distance;
       last_window_y += window_max_ds * (window_y - last_window_y) / distance;
     
+      ROS_INFO_STREAM("last_windown_x = " << last_window_x << "," <<"last_window_y = " << last_window_y);
       trajectory.push_back(Position(last_window_x, last_window_y, false));
       distance = sqrt(pow(window_y - last_window_y, 2) + pow(window_x - last_window_x, 2));
     }
