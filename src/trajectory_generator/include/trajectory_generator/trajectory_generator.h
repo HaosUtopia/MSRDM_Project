@@ -9,6 +9,7 @@
 
 // Touchpad message type
 #include <std_msgs/Int32MultiArray.h>
+#include <std_srvs/Empty.h>
 
 namespace trajectory_generator
 {
@@ -35,6 +36,10 @@ protected:
 private:
   void lowPassFilter(double& value, const double& prev_value);
   void getPointCallback(const std_msgs::Int32MultiArray::ConstPtr& msg);
+  bool startTrajCallback(std_srvs::Empty::Request& req,
+                         std_srvs::Empty::Response& resp);
+  
+  bool started;
   
   double point_min_x;
   double point_max_x;
@@ -69,6 +74,7 @@ private:
   std::vector<Position> trajectory;
   
   ros::Subscriber sub_point;
+  ros::ServiceServer srv_start;
 
 };
 

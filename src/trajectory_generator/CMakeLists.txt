@@ -10,6 +10,7 @@ project(trajectory_generator)
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   std_msgs
+  std_srvs
   message_generation
 )
 
