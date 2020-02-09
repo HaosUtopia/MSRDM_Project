@@ -36,8 +36,8 @@ protected:
 private:
   void lowPassFilter(double& value, const double& prev_value);
   void getPointCallback(const std_msgs::Int32MultiArray::ConstPtr& msg);
-  bool startTrajCallback(std_srvs::Empty::Request& req,
-                         std_srvs::Empty::Response& resp);
+  // bool startTrajCallback(std_srvs::Empty::Request& req,
+  //                        std_srvs::Empty::Response& resp);
   
   bool started;
   
@@ -74,7 +74,7 @@ private:
   std::vector<Position> trajectory;
   
   ros::Subscriber sub_point;
-  ros::ServiceServer srv_start;
+  //ros::ServiceServer srv_start;
 
 };
 

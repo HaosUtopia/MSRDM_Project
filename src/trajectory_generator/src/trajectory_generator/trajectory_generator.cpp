@@ -6,7 +6,7 @@ namespace trajectory_generator
 TrajGen::TrajGen(const ros::NodeHandle& nh, double delta_t)
   : root_nh(nh)
   , traj_nh(nh, "trajectory_generator")
-  , started(false)
+  //, started(false)
 {
   ROS_INFO("Initializing trajectory generator...");
   
@@ -96,7 +96,7 @@ TrajGen::TrajGen(const ros::NodeHandle& nh, double delta_t)
   last_window_y = window_init_y;
   
   sub_point = root_nh.subscribe("finger_position", 100, &TrajGen::getPointCallback, this);
-  srv_start = traj_nh.advertiseService("trajectory_start", &TrajGen::startTrajCallback, this);
+  //srv_start = traj_nh.advertiseService("trajectory_start", &TrajGen::startTrajCallback, this);
   
   if (ok)
   {
@@ -139,10 +139,10 @@ void TrajGen::lowPassFilter(double& value, const double& pre_value)
 
 void TrajGen::getPointCallback(const std_msgs::Int32MultiArray::ConstPtr& msg)
 {
-  if (!started)
-  {
-    return;
-  }
+  // if (!started)
+  // {
+  //   return;
+  // }
   
   point_x = msg->data[0];
   point_y = msg->data[1];
@@ -184,12 +184,12 @@ void TrajGen::getPointCallback(const std_msgs::Int32MultiArray::ConstPtr& msg)
   }
 }
 
-bool TrajGen::startTrajCallback(std_srvs::Empty::Request& req,
-                                std_srvs::Empty::Response& resp)
-{
-  started = true;
+// bool TrajGen::startTrajCallback(std_srvs::Empty::Request& req,
+//                                 std_srvs::Empty::Response& resp)
+// {
+//   started = true;
   
-  return true;
-}
+//   return true;
+// }
 
 }
