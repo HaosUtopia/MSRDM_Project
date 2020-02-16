@@ -1,4 +1,6 @@
 <?xml version="1.0"?>
 <launch>
   <node pkg="pub_touchpad" name="publish_touchpad" type="pub_touchpad_node" output="screen"/>
+  <node pkg="pub_touchpad" name="displayer" type="show_traj.py"/>
+  <include file="$(find trajectory_generator)/launch/trajectory_generator.launch" />
 </launch>

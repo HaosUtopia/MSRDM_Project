@@ -106,7 +106,7 @@ generate_messages(
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES trajectory_generator
-  CATKIN_DEPENDS roscpp message_run
+  CATKIN_DEPENDS roscpp
   DEPENDS Boost
 )
 

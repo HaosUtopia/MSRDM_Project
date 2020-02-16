@@ -19,15 +19,15 @@ class displayer:
         self.fig.canvas.draw()
         self.h = []
         self.curr_plot_idx = -1
-        plt.xlim([0,5000])
-        plt.ylim([-5000,0])
+        plt.xlim([1200,5500])
+        plt.ylim([-5000,-1200])
 
         self.subscriber = rospy.Subscriber("finger_position", Int32MultiArray, self.callback)
 
     def callback(self, msg):
         #mutex.acquire()
-        self.currX = msg.data[0]-1300
-        self.currY = 1200-msg.data[1]
+        self.currX = msg.data[0]
+        self.currY = -msg.data[1]
         #mutex.release()
     def draw(self):
         # plt.plot(self.currX, self.currY,'k.')
@@ -41,7 +41,7 @@ class displayer:
         self.prevY = currY
         #mutex.release()
         dist = np.sqrt((currX - prevX)**2 + (currY - prevY)**2)
-        if not self.h or dist > 300:
+        if not self.h or dist > 400:
             print("Distance:",dist)
             self.h.append(plt.plot([],[]))
             self.curr_plot_idx +=1

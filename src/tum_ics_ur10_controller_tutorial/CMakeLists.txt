@@ -15,6 +15,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   tf
   tf_conversions
+  trajectory_generator
 )
 
 ##############################################################################
@@ -50,7 +51,7 @@ endif()
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES my_robot_control_lli
-  CATKIN_DEPENDS tum_ics_ur_robot_msgs roscpp rospy sensor_msgs std_msgs tf tf_conversions visualization_msgs tum_ics_ur_robot_lli
+  CATKIN_DEPENDS tum_ics_ur_robot_msgs roscpp rospy sensor_msgs std_msgs tf tf_conversions visualization_msgs tum_ics_ur_robot_lli trajectory_generator
   DEPENDS ${DEPENDS_VAR}
 )
 
@@ -98,6 +99,7 @@ target_link_libraries(my_robot_control_lli
     ${TMATH_LIBRARIES}
 )
 add_dependencies(my_robot_control_lli
+    ${catkin_EXPORTED_TARGETS}
     ${tum_ics_ur_robot_msgs_EXPORTED_TARGETS}
     ${sensor_msgs_EXPORTED_TARGETS}
     ${std_msgs_EXPORTED_TARGETS}
@@ -124,6 +126,7 @@ foreach(target ${APP_TARGETS})
         ${RTTHREADS_LIBRARIES}
         ${TMATH_LIBRARIES})
     add_dependencies(${target}
+        ${catkin_EXPORTED_TARGETS}
         ${tum_ics_ur_robot_msgs_EXPORTED_TARGETS}
         ${sensor_msgs_EXPORTED_TARGETS}
         ${std_msgs_EXPORTED_TARGETS}

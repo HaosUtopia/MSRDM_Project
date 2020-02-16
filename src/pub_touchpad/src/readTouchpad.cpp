@@ -25,6 +25,7 @@ bool started = false;
 bool startTrajCallback(std_srvs::Empty::Request& req,
                                 std_srvs::Empty::Response& resp)
 {
+  ROS_INFO_STREAM("Start to collect touchpad");
   started = true;
   
   return true;
@@ -34,7 +35,7 @@ bool startTrajCallback(std_srvs::Empty::Request& req,
 int main(int argc, char *argv[])
 {
     struct input_event ev;
-    int fd;
+    int fd = -77;
     char name[256] = "Unknown";
 
 
@@ -43,18 +44,6 @@ int main(int argc, char *argv[])
         return EXIT_SUCCESS;
     }
 
-    /* Open Device */
-    fd = open(EVENT_DEVICE, O_RDONLY);
-    if (fd == -1) {
-        fprintf(stderr, "%s is not a vaild device\n", EVENT_DEVICE);
-        return EXIT_FAILURE;
-    }
-
-    /* Print Device Name */
-    ioctl(fd, EVIOCGNAME(sizeof(name)), name);
-    printf("Reading from:\n");
-    printf("device file = %s\n", EVENT_DEVICE);
-    printf("device name = %s\n", name);
 
     ros::init(argc, argv, "Finger_pub");
     ros::NodeHandle n;
@@ -71,6 +60,22 @@ int main(int argc, char *argv[])
     while(ros::ok()) {
 
     	while(started && ros::ok()){
+            /* Open Device */
+            if(fd == -77)
+            {
+                fd = open(EVENT_DEVICE, O_RDONLY);
+                if (fd == -1) {
+                    fprintf(stderr, "%s is not a vaild device\n", EVENT_DEVICE);
+                    return EXIT_FAILURE;
+                }
+
+                /* Print Device Name */
+                ioctl(fd, EVIOCGNAME(sizeof(name)), name);
+                printf("Reading from:\n");
+                printf("device file = %s\n", EVENT_DEVICE);
+                printf("device name = %s\n", name);
+            }
+
 	        const size_t ev_size = sizeof(struct input_event);
 	        ssize_t size;
 

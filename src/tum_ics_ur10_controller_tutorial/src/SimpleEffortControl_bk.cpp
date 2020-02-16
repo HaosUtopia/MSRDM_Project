@@ -1,6 +1,7 @@
 #include<tum_ics_ur10_controller_tutorial/SimpleEffortControl.h>
 
 #include<tum_ics_ur_robot_msgs/ControlData.h>
+//#include<Eigen/Dense>
 
 
 namespace tum_ics_ur_robot_lli{
@@ -105,9 +106,6 @@ SimpleEffortControl::SimpleEffortControl(double weight, const QString &name):
     pubCtrlData=n.advertise<tum_ics_ur_robot_msgs::ControlData>("SimpleEffortCtrlData",100);
     subGoal = n.subscribe("/trajectory_generator/position",100,&SimpleEffortControl::setGoal,this);
     srvStart = n.serviceClient<std_srvs::Empty>("/trajectory_start");
-    srvModLED = n.serviceClient<tum_ics_skin_msgs::setSkinCellLedColor>("/setSkinCellLedColor");
-
-    J_.setZero();
 
     //m_controlPeriod=0.002; //set the control period to the standard 2 ms
     //m_controlPeriod_2=m_controlPeriod/2.0;
@@ -137,33 +135,16 @@ void SimpleEffortControl::setQPark(const JointState& qpark)
 }
 
 void SimpleEffortControl::setGoal(const trajectory_generator::TrajectoryPosition::ConstPtr& msg){
-    if(m_GoalLED != msg->led){
-        m_GoalLED = msg->led;
-        ROS_INFO_STREAM("Change LED from "<<!msg->led<<" to " << int(msg->led));
-        tum_ics_skin_msgs::setSkinCellLedColor msgAlt;
-        tum_ics_skin_msgs::SkinCellLedColor color;
-        color.cellId = 42;
-        color.r = msg->led ? 255 : 0;
-        color.g = msg->led ? 255 : 0;
-        color.b = msg->led ? 255 : 0;
-        msgAlt.request.color.push_back(color);
-        color.cellId = 43;
-        msgAlt.request.color.push_back(color);
-        color.cellId = 44;
-        msgAlt.request.color.push_back(color);
-
-        srvModLED.call(msgAlt);
-
-    }
+    m_GoalLED = msg->led;
     m_GoalX[1] = msg->x;
     m_GoalX[2] = msg->y;
-    // ROS_INFO_STREAM("Tracking Goal: X Y LED"<< m_GoalX[1]<<", "<<m_GoalX[2]<<", "<<m_GoalLED);
+    ROS_INFO_STREAM("Tracking Goal: X Y LED"<< m_GoalX[1]<<", "<<m_GoalX[2]<<", "<<m_GoalLED);
 }
 
-Vector7d SimpleEffortControl::FK(Vector6d Q){
+Vector6d SimpleEffortControl::FK(Vector6d Q){
     using namespace std;
 
-    Vector7d X;
+    Vector6d X;
 
     double q1,q2,q3,q4,q5,q6;
 
@@ -177,23 +158,17 @@ Vector7d SimpleEffortControl::FK(Vector6d Q){
     X(0,0) = -L6*(cos(q5)*sin(q1)-cos(q2+q3+q4)*cos(q1)*sin(q5))+cos(q1)*(L3*cos(q2+q3)+L2*cos(q2))-L4*sin(q1)-L5*sin(q2+q3+q4)*cos(q1);
     X(1,0) = L6*(cos(q1)*cos(q5)+cos(q2+q3+q4)*sin(q1)*sin(q5))+sin(q1)*(L3*cos(q2+q3)+L2*cos(q2))+L4*cos(q1)-L5*sin(q2+q3+q4)*sin(q1);
     X(2,0) = L1-L3*sin(q2+q3)-L2*sin(q2)-L5*cos(q2+q3+q4)-L6*sin(q2+q3+q4)*sin(q5);
-    
-    X(3,0) = sqrt(-sin(q2+q3+q4)*sin(q5)+cos(q6)*(sin(q1)*sin(q5)+cos(q2+q3+q4)*cos(q1)*cos(q5))+sin(q6)*(cos(q1)*sin(q5)-cos(q2+q3+q4)*cos(q5)*sin(q1))-sin(q2+q3+q4)*cos(q1)*sin(q6)-sin(q2+q3+q4)*cos(q6)*sin(q1)+1.0)/2.0;
-    X(4,0) = (cos(q1)*cos(q5)+cos(q2+q3+q4)*cos(q6)+cos(q2+q3+q4)*sin(q1)*sin(q5)-sin(q2+q3+q4)*cos(q5)*sin(q6))*1.0/sqrt(-sin(q2+q3+q4)*sin(q5)+cos(q6)*(sin(q1)*sin(q5)+cos(q2+q3+q4)*cos(q1)*cos(q5))+sin(q6)*(cos(q1)*sin(q5)-cos(q2+q3+q4)*cos(q5)*sin(q1))-sin(q2+q3+q4)*cos(q1)*sin(q6)-sin(q2+q3+q4)*cos(q6)*sin(q1)+1.0)*(-1.0/2.0);
-    X(5,0) = ((-cos(q5)*sin(q1)+cos(q2+q3+q4)*sin(q6)+cos(q2+q3+q4)*cos(q1)*sin(q5)+sin(q2+q3+q4)*cos(q5)*cos(q6))*1.0/sqrt(-sin(q2+q3+q4)*sin(q5)+cos(q6)*(sin(q1)*sin(q5)+cos(q2+q3+q4)*cos(q1)*cos(q5))+sin(q6)*(cos(q1)*sin(q5)-cos(q2+q3+q4)*cos(q5)*sin(q1))-sin(q2+q3+q4)*cos(q1)*sin(q6)-sin(q2+q3+q4)*cos(q6)*sin(q1)+1.0))/2.0;
-    X(6,0) = (cos(q6)*(cos(q1)*sin(q5)-cos(q2+q3+q4)*cos(q5)*sin(q1))-sin(q6)*(sin(q1)*sin(q5)+cos(q2+q3+q4)*cos(q1)*cos(q5))-sin(q2+q3+q4)*cos(q1)*cos(q6)+sin(q2+q3+q4)*sin(q1)*sin(q6))*1.0/sqrt(-sin(q2+q3+q4)*sin(q5)+cos(q6)*(sin(q1)*sin(q5)+cos(q2+q3+q4)*cos(q1)*cos(q5))+sin(q6)*(cos(q1)*sin(q5)-cos(q2+q3+q4)*cos(q5)*sin(q1))-sin(q2+q3+q4)*cos(q1)*sin(q6)-sin(q2+q3+q4)*cos(q6)*sin(q1)+1.0)*(-1.0/2.0);
-
-    // X(3,0) = atan2(-cos(q2+q3+q4)*cos(q6)+sin(q2+q3+q4)*cos(q5)*sin(q6),-sin(q2+q3+q4)*sin(q5));
-    // X(4,0) = atan2(cos(q2+q3+q4)*sin(q6)+sin(q2+q3+q4)*cos(q5)*cos(q6),sqrt(-pow(cos(q2+q3+q4)*sin(q6)+sin(q2+q3+q4)*cos(q5)*cos(q6),2.0)+1.0));
-    // X(5,0) = atan2(-cos(q6)*(cos(q1)*sin(q5)-cos(q2+q3+q4)*cos(q5)*sin(q1))-sin(q2+q3+q4)*sin(q1)*sin(q6),cos(q6)*(sin(q1)*sin(q5)+cos(q2+q3+q4)*cos(q1)*cos(q5))-sin(q2+q3+q4)*cos(q1)*sin(q6));
+    X(3,0) = atan2(-cos(q2+q3+q4)*cos(q6)+sin(q2+q3+q4)*cos(q5)*sin(q6),-sin(q2+q3+q4)*sin(q5));
+    X(4,0) = atan2(cos(q2+q3+q4)*sin(q6)+sin(q2+q3+q4)*cos(q5)*cos(q6),sqrt(-pow(cos(q2+q3+q4)*sin(q6)+sin(q2+q3+q4)*cos(q5)*cos(q6),2.0)+1.0));
+    X(5,0) = atan2(-cos(q6)*(cos(q1)*sin(q5)-cos(q2+q3+q4)*cos(q5)*sin(q1))-sin(q2+q3+q4)*sin(q1)*sin(q6),cos(q6)*(sin(q1)*sin(q5)+cos(q2+q3+q4)*cos(q1)*cos(q5))-sin(q2+q3+q4)*cos(q1)*sin(q6));
 
     return X;
 }
 
-Eigen::Matrix<double,7,6> SimpleEffortControl::Jacobian(Vector6d Q){
+Matrix6d SimpleEffortControl::Jacobian(Vector6d Q){
     using namespace std;
 
-    Eigen::Matrix<double,7,6> Jef;
+    Matrix6d Jef;
 
     double q1,q2,q3,q4,q5,q6;
 
@@ -471,6 +446,7 @@ bool SimpleEffortControl::init()
     VDouble p;
 
     /////D GAINS
+
     s<<ns<<"/gains_d";
     ros::param::get(s.str(),p);
 
@@ -488,25 +464,6 @@ bool SimpleEffortControl::init()
     }
 
     ROS_WARN_STREAM("Kd: \n"<<m_Kd);
-
-    s.str("");
-    s<<ns<<"/gains_d_cart";
-    ros::param::get(s.str(),p);
-
-    if(p.size()<STD_DOF+1)
-    {
-        s.str("");
-        s<<"SimpleEffortControl init(): Wrong number of d_gains_cart --"<<p.size()<<"--";
-        m_error=true;
-        m_errorString=s.str().c_str();
-        return false;
-    }
-    for(int i=0;i<STD_DOF+1;i++)
-    {
-        m_Kd_cart(i,i)=p[i];
-    }
-
-    ROS_WARN_STREAM("Kd_cart: \n"<<m_Kd_cart);
 
     /////P GAINS
     s.str("");
@@ -528,25 +485,6 @@ bool SimpleEffortControl::init()
 
     ROS_WARN_STREAM("Kp: \n"<<m_Kp);
 
-    s.str("");
-    s<<ns<<"/gains_p_cart";
-    ros::param::get(s.str(),p);
-
-    if(p.size()<STD_DOF+1)
-    {
-        s.str("");
-        s<<"SimpleEffortControl init(): Wrong number of p_gains_cart --"<<p.size()<<"--";
-        m_error=true;
-        m_errorString=s.str().c_str();
-        return false;
-    }
-    for(int i=0;i<STD_DOF+1;i++)
-    {
-        m_Kp_cart(i,i)=p[i]/m_Kd_cart(i,i);
-    }
-
-    ROS_WARN_STREAM("Kp_cart: \n"<<m_Kp_cart);
-
     /////I GAINS
     s.str("");
     s<<ns<<"/gains_i";
@@ -566,25 +504,6 @@ bool SimpleEffortControl::init()
     }
 
     ROS_WARN_STREAM("Ki: \n"<<m_Ki);
-
-    s.str("");
-    s<<ns<<"/gains_i_cart";
-    ros::param::get(s.str(),p);
-
-    if(p.size()<STD_DOF+1)
-    {
-        s.str("");
-        s<<"SimpleEffortControl init(): Wrong number of p_gains_cart --"<<p.size()<<"--";
-        m_error=true;
-        m_errorString=s.str().c_str();
-        return false;
-    }
-    for(int i=0;i<STD_DOF+1;i++)
-    {
-        m_Ki_cart(i,i)=p[i];
-    }
-
-    ROS_WARN_STREAM("Ki_cart: \n"<<m_Ki_cart);
 
     /////GOAL
     s.str("");
@@ -655,7 +574,7 @@ bool SimpleEffortControl::init()
     s.str("");
     s<<ns<<"/start_pose";
     ros::param::get(s.str(),p);
-    for(int i=0;i<STD_DOF+1;i++)
+    for(int i=0;i<STD_DOF;i++)
     {
         m_GoalX(i)=p[i];
     }
@@ -665,17 +584,6 @@ bool SimpleEffortControl::init()
 
     m_curr_stat = INIT_JOINT;
     m_next_stat = INIT_JOINT;
-
-    tum_ics_skin_msgs::setSkinCellLedColor msgShutDown;
-    tum_ics_skin_msgs::SkinCellLedColor color;
-    color.r = 0;
-    color.g = 0;
-    color.b = 0;
-    for(int i=1;i<55;i++){
-        color.cellId = i;
-        msgShutDown.request.color.push_back(color);
-    }
-    srvModLED.call(msgShutDown);
 
 }
 bool SimpleEffortControl::start()
@@ -687,18 +595,13 @@ Vector6d SimpleEffortControl::update(const RobotTime &time, const JointState &cu
     dt = time.tD()-ti;
     //ROS_INFO_STREAM("dt: "<<dt);
     tau.setZero();    
-    JointState js_r;
-    Vector7d Xrp,Xrpp;
-
+    JointState xs_r,js_r;
     VVector6d vQd;
-    VVector7d vXd;
-    VVector6d vXd_tmp; //xyzRxRyRz
-    Vector3d vXd_w; //Rw
-    Vector7d curr_cartVel, curr_cartPos;
+    VVector6d vXd;
+    Vector6d curr_cartVel, curr_cartPos;
     Matrix3d Jv_tmp;
     Eigen::Matrix<double,3,6> Jv;
     
-
     /*
     Vector6d deltaQ;
     deltaQ  << dt, dt, dt, dt, dt, dt;
@@ -710,7 +613,8 @@ Vector6d SimpleEffortControl::update(const RobotTime &time, const JointState &cu
     ROS_INFO_STREAM("jacobi vel = "<<curr_cartVel_jacob);
     */
     
-    // ROS_INFO_STREAM("current state: "<<m_curr_stat);
+    
+    ROS_INFO_STREAM("current state: "<<m_curr_stat);
     switch(m_curr_stat){
         case CALIBRATION:
         {
@@ -738,8 +642,8 @@ Vector6d SimpleEffortControl::update(const RobotTime &time, const JointState &cu
             m_DeltaQp=current.qp-vQd[1];
             m_iDeltaQ = m_iDeltaQ+m_DeltaQ*dt;
             
-            // ROS_INFO_STREAM("joint error = "<<m_DeltaQ);
-            // ROS_INFO_STREAM("||joint error|| = "<<m_DeltaQ.norm());
+            ROS_INFO_STREAM("joint error = "<<m_DeltaQ);
+            ROS_INFO_STREAM("||joint error|| = "<<m_DeltaQ.norm());
 
             js_r=current;
             js_r.qp=vQd[1]-m_Kp*m_DeltaQ-m_Ki*m_iDeltaQ;
@@ -785,7 +689,7 @@ Vector6d SimpleEffortControl::update(const RobotTime &time, const JointState &cu
             js_r.qpp=vQd[2]-m_Kp*m_DeltaQp-m_Ki*m_DeltaQ;
 
             Sq = current.qp-js_r.qp;
-            // ROS_INFO_STREAM("Sq = \n"<<Sq);
+            ROS_INFO_STREAM("Sq = \n"<<Sq);
 
             break;
         }
@@ -793,9 +697,7 @@ Vector6d SimpleEffortControl::update(const RobotTime &time, const JointState &cu
         {
             
         	curr_cartPos = FK(current.q);
-            //ROS_INFO_STREAM("before jacobian");
         	m_J = Jacobian(current.q);
-            //ROS_INFO_STREAM("after jacobian");
             Jv = m_J.block(0,0,3,m_J.cols());
             
         	JacobiSVD<MatrixXd> svd(m_J, ComputeFullU | ComputeFullV);
@@ -803,7 +705,7 @@ Vector6d SimpleEffortControl::update(const RobotTime &time, const JointState &cu
         	VectorXd singular_v;
 			singular_v = svd.singularValues();
 			VectorXd singular_v_inv = singular_v;
-			//ROS_INFO_STREAM("Sigma: \n"<<singular_v);
+			ROS_INFO_STREAM("Sigma: \n"<<singular_v);
  
 			for(int i=0;i<singular_v.size();i++){
 			    //ROS_INFO_STREAM("singular_v"<<i<<" = "<<singular_v(i));
@@ -814,12 +716,12 @@ Vector6d SimpleEffortControl::update(const RobotTime &time, const JointState &cu
 			    
 			}
 			
-            J_.block(0,0,singular_v.size(),singular_v.size()) = singular_v_inv.asDiagonal();
             m_invJ_ = m_invJ;
-            m_invJ = svd.matrixV() * J_ * svd.matrixU().transpose();
+            m_invJ = svd.matrixV() * singular_v_inv.asDiagonal() * svd.matrixU().transpose();
             
+        	m_invJ = m_J.inverse();
             if(!m_startFlag){
-                m_invJ_d.setZero();
+                m_invJ_d = Matrix6d::Zero();
             }else{
                 m_invJ_d = (m_invJ - m_invJ_)/dt;
             }
@@ -830,7 +732,7 @@ Vector6d SimpleEffortControl::update(const RobotTime &time, const JointState &cu
             //ROS_INFO_STREAM("w = "<<m_sing);
 
         	//curr_cartVel = m_J*current.qp;
-            // ROS_INFO_STREAM("curr_cartVel = \n"<<curr_cartVel);
+            ROS_INFO_STREAM("curr_cartVel = \n"<<curr_cartVel);
 
         	if(!m_startFlag){
 	            m_xStart = curr_cartPos;
@@ -841,55 +743,53 @@ Vector6d SimpleEffortControl::update(const RobotTime &time, const JointState &cu
 	            m_iDeltaX.setZero();
 	        }
             
-            // ROS_INFO_STREAM("xStart = "<<m_xStart);
-            // ROS_INFO_STREAM("xGoal = \n"<<m_GoalX);
+            //ROS_INFO_STREAM("xStart = "<<m_xStart);
+            ROS_INFO_STREAM("xGoal = \n"<<m_GoalX);
 	        //ROS_INFO_STREAM("rel time = "<<time.tD()-m_startTime);
 	        //ROS_INFO_STREAM("total time = "<<m_Tinit2);
 	        
-	        vXd_tmp = getJointPVT5(m_xStart.head(6),m_GoalX.head(6),time.tD()-m_startTime,m_Tinit2);
-            vXd_w = getJointPVT5(m_xStart[6],m_GoalX[6],time.tD()-m_startTime,m_Tinit2);
-            
-            vXd.push_back(Vector7d()); vXd.push_back(Vector7d()); vXd.push_back(Vector7d());
-            vXd[0].head(6) = vXd_tmp[0]; (vXd[0])(6) = vXd_w[0];
-            vXd[1].head(6) = vXd_tmp[1]; (vXd[1])(6) = vXd_w[1];
-            vXd[2].head(6) = vXd_tmp[2]; (vXd[2])(6) = vXd_w[2];
+	        vXd = getJointPVT5(m_xStart,m_GoalX,time.tD()-m_startTime,m_Tinit2);
 	        
 	        //vXd[0] = m_GoalX;
 	        //vXd[1].setZero();
 	        //vXd[2].setZero();
 	        
             //ROS_INFO_STREAM("curr cartesian error = "<<curr_cartPos-m_GoalX);
-            //ROS_INFO_STREAM("Planned goal = \n"<<vXd[0]);
-            //ROS_INFO_STREAM("curr_cartPos = "<<curr_cartPos);
+            ROS_INFO_STREAM("Planned goal = \n"<<vXd[0]);
+            ROS_INFO_STREAM("curr_cartPos = "<<curr_cartPos);
             //ROS_INFO_STREAM("curr cartesian goal vel = "<<vXd[1]);
 	        m_DeltaX  = curr_cartPos-vXd[0];
             m_DeltaXp = curr_cartVel-vXd[1];
             //m_DeltaX  = curr_cartPos-m_GoalX;
 
-            //ROS_INFO_STREAM("DeltaX = "<<m_DeltaX);
-            //ROS_INFO_STREAM("DeltaXp = "<<m_DeltaXp);
+            ROS_INFO_STREAM("DeltaX = "<<m_DeltaX);
+            ROS_INFO_STREAM("DeltaXp = "<<m_DeltaXp);
 
             m_iDeltaX = m_iDeltaX+m_DeltaX*dt;
 
-            Xrp  = vXd[1]-m_Kp_cart*m_DeltaX -m_Ki_cart*m_iDeltaX;
-            Xrpp = vXd[2]-m_Kp_cart*m_DeltaXp-m_Ki_cart*m_DeltaX;
+            xs_r.q = curr_cartPos;
+            xs_r.qp  = vXd[1]-m_Kp*m_DeltaX -m_Ki*m_iDeltaX;
+            xs_r.qpp = vXd[2]-m_Kp*m_DeltaXp-m_Ki*m_DeltaX;
             
-            //ROS_INFO_STREAM("vXd[0] = "<<vXd[0]);
-            //ROS_INFO_STREAM("vXd[1] = "<<vXd[1]);
-            //ROS_INFO_STREAM("vXd[2] = "<<vXd[2]);
+            ROS_INFO_STREAM("vXd[0] = "<<vXd[0]);
+            ROS_INFO_STREAM("vXd[1] = "<<vXd[1]);
+            ROS_INFO_STREAM("vXd[2] = "<<vXd[2]);
             //xs_r.qp.setZero();
             //xs_r.qpp.setZero();
+            
+            ROS_INFO_STREAM("Xr = \n"<<xs_r.qp);
 
             js_r = current;
-            js_r.qp = m_invJ*Xrp;
-            js_r.qpp = m_invJ_d*Xrp + m_invJ*Xrpp;
+            js_r.qp = m_invJ*xs_r.qp;
+            js_r.qpp = m_invJ_d*xs_r.qp + m_invJ*xs_r.qpp;
             //js_r.qpp = m_invJ*xs_r.qpp;
             
             //js_r.qp.setZero();
             //js_r.qpp.setZero();
 
             Sq = current.qp-js_r.qp;
-            // ROS_INFO_STREAM("Sq = \n"<<Sq);
+            ROS_INFO_STREAM("Sq = \n"<<Sq);
+            ROS_INFO_STREAM("Sx = \n"<< curr_cartVel - xs_r.qp);
             //Sq = m_invJ * (curr_cartVel - xs_r.qp);
             //ROS_INFO_STREAM("current.qp = "<<current.qp);
             //while(ros::ok()){}
@@ -898,31 +798,33 @@ Vector6d SimpleEffortControl::update(const RobotTime &time, const JointState &cu
         case TRACKING:
         {
         	curr_cartPos = FK(current.q);
-            m_J = Jacobian(current.q);
+        	m_J = Jacobian(current.q);
             Jv = m_J.block(0,0,3,m_J.cols());
             
-            JacobiSVD<MatrixXd> svd(m_J, ComputeFullU | ComputeFullV);
+        	JacobiSVD<MatrixXd> svd(m_J, ComputeFullU | ComputeFullV);
 
-            VectorXd singular_v;
-            singular_v = svd.singularValues();
-            VectorXd singular_v_inv = singular_v;
-            // ROS_INFO_STREAM("Sigma: \n"<<singular_v);
- 
-            for(int i=0;i<singular_v.size();i++){
-                //ROS_INFO_STREAM("singular_v"<<i<<" = "<<singular_v(i));
-                //ROS_INFO_STREAM("m_THR_SING = "<<m_THR_SING);
-                singular_v_inv(i)=singular_v(i)< m_THR_SING ? 1/m_THR_SING:1/singular_v(i);
-                //if(singular_v(i)< m_THR_SING) ROS_INFO_STREAM("sing protection!!!!");
-                //singular_v_inv(i) = singular_v(i)/(singular_v(i)*singular_v(i)+0.04);
-                
-            }
-            
-            J_.block(0,0,singular_v.size(),singular_v.size()) = singular_v_inv.asDiagonal();
+        	VectorXd singular_v;
+			singular_v = svd.singularValues();
+			VectorXd singular_v_inv = singular_v;
+            ROS_INFO_STREAM("Sigma: \n"<<singular_v);
+			for(int i=0;i<singular_v.size();i++){
+			    //ROS_INFO_STREAM("singular_v"<<i<<" = "<<singular_v(i));
+			    //ROS_INFO_STREAM("m_THR_SING = "<<m_THR_SING);
+			    singular_v_inv(i)=singular_v(i)< m_THR_SING ? 1/m_THR_SING:1/singular_v(i);
+			    //if(singular_v(i)< m_THR_SING) ROS_INFO_STREAM("sing protection!!!!");
+			    //singular_v_inv(i) = singular_v(i)/(singular_v(i)*singular_v(i)+0.04);
+			}
+			
             m_invJ_ = m_invJ;
-            m_invJ = svd.matrixV() * J_ * svd.matrixU().transpose();
+            m_invJ = svd.matrixV() * singular_v_inv.asDiagonal() * svd.matrixU().transpose();
             
+        	//m_invJ = m_J.inverse();
             if(!m_startFlag){
-                m_invJ_d.setZero();
+                m_invJ_d = Matrix6d::Zero();
+                ROS_INFO_STREAM("tk init ");
+                ROS_INFO_STREAM("curr_cartPos = "<<curr_cartPos);
+                ROS_INFO_STREAM("m_GoalX = "<<m_GoalX);
+                m_GoalX = curr_cartPos;
             }else{
                 m_invJ_d = (m_invJ - m_invJ_)/dt;
             }
@@ -943,16 +845,20 @@ Vector6d SimpleEffortControl::update(const RobotTime &time, const JointState &cu
             //ROS_INFO_STREAM("DeltaX = "<<m_DeltaX);
             //ROS_INFO_STREAM("DeltaXp = "<<m_DeltaXp);
             
-            Xrp  = m_GoalXp-m_Kp_cart*m_DeltaX -m_Ki_cart*m_iDeltaX;
-            Xrpp = m_GoalXpp-m_Kp_cart*m_DeltaXp-m_Ki_cart*m_DeltaX;
+            xs_r.q = curr_cartPos;
+            xs_r.qp  = m_GoalXp-m_Kp*m_DeltaX -m_Ki*m_iDeltaX;
+            xs_r.qpp = m_GoalXpp-m_Kp*m_DeltaXp-m_Ki*m_DeltaX;
 
             js_r = current;
-            js_r.qp = m_invJ*Xrp;
-            js_r.qpp = m_invJ_d*Xrp + m_invJ*Xrpp;
+            js_r.qp = m_invJ*xs_r.qp;
+            js_r.qpp = m_invJ_d*xs_r.qp + m_invJ*xs_r.qpp;
+            //js_r.qpp = m_invJ*xs_r.qpp;
+
             
             Sq = current.qp-js_r.qp;
 
             //ROS_INFO_STREAM("Sq = \n"<<Sq);
+            //ROS_INFO_STREAM("Sx = \n"<< curr_cartVel - xs_r.qp);
             //while(ros::ok()){}
             break;
         }
@@ -1012,7 +918,7 @@ Vector6d SimpleEffortControl::update(const RobotTime &time, const JointState &cu
                 ROS_INFO_STREAM("next state: Protection");
             }else{
                 if(time.tD()>m_endTime && m_DeltaX.sum()<m_THR_DeltaX){
-                    m_next_stat = TRACKING;
+                    //m_next_stat = TRACKING;
                     m_startFlag = false;
                     m_iDeltaX.setZero();
                     std_srvs::Empty tmp;
@@ -1121,7 +1027,7 @@ Vector6d SimpleEffortControl::update(const RobotTime &time, const JointState &cu
     //ROS_INFO_STREAM("ti: "<<ti);
     //ROS_INFO_STREAM("tf: "<<tf);
     //tau.setZero();
-    // ROS_INFO_STREAM("tau: "<<tau);
+    ROS_INFO_STREAM("tau: "<<tau);
     return tau;
 
 }
