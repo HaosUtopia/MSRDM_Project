@@ -20,17 +20,21 @@ public:
   TrajGen(const ros::NodeHandle& nh, double delta_t);
   ~TrajGen();
   
-  bool getCurrPos(double& ox, double& oy, bool& oled);
+  bool getCurrPos(double& ox, double& oy, double& ovx, double& ovy, double& oax, double& oay, bool& oled);
   
 protected:
   struct Position
   {
     double x;
     double y;
+    double vx;
+    double vy;
+    double ax;
+    double ay;
     bool led;
     
-    Position(double ix, double iy, bool iled) : x(ix), y(iy), led(iled) {}
-    Position() : x(0.0), y(0.0), led(false) {}
+    Position(double ix, double iy, double ivx, double ivy, double iax, double iay, bool iled) : x(ix), y(iy), vx(ivx), vy(ivy), ax(iax), ay(iay), led(iled) {}
+    Position() : x(0.0), y(0.0), vx(0.0), vy(0.0), ax(0.0), ay(0.0), led(false) {}
   };
   
 private:
@@ -40,6 +44,7 @@ private:
                          std_srvs::Empty::Response& resp);
   
   bool started;
+  double delta_t;
   
   double point_min_x;
   double point_max_x;
@@ -61,8 +66,14 @@ private:
   double point_y;
   double window_x;
   double window_y;
+  double window_vx;
+  double window_vy;
   double last_window_x;
   double last_window_y;
+  double last_window_vx;
+  double last_window_vy;
+  double last_window_ax;
+  double last_window_ay;
   
   double distance;
   

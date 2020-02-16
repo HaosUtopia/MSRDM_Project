@@ -10,6 +10,6 @@ trajectory_generator:
   window_init_x: 0.5
   window_init_y: 1
   window_min_v: 0.01
-  window_max_v: 0.18
+  window_max_v: 0.12
   window_max_d: 0.125
   

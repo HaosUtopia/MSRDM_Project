@@ -16,14 +16,22 @@ int main(int argc, char** argv)
   trajectory_generator::TrajectoryPosition msg;
   double x;
   double y;
+  double vx;
+  double vy;
+  double ax;
+  double ay;
   bool led;
   
   while(ros::ok())
   {
-    if (node.getCurrPos(x, y, led))
+    if (node.getCurrPos(x, y, vx, vy, ax, ay, led))
     {
       msg.x = x;
       msg.y = y;
+      msg.vx = vx;
+      msg.vy = vy;
+      msg.ax = ax;
+      msg.ay = ay;
       msg.led = led;
       
       pub_position.publish(msg);

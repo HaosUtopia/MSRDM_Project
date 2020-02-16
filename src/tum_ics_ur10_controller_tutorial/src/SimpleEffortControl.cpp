@@ -42,6 +42,7 @@ SimpleEffortControl::SimpleEffortControl(double weight, const QString &name):
     g = 9.81; gx = 0.0; gy = 0.0; gz = 1.0; 
     b1 = 0; b2 = 0; b3 = 0; b4 = 0; b5 = 0; b6 = 0; 
     
+    m_GoalX.setZero();
     m_GoalXp.setZero();
     m_GoalXpp.setZero();
 
@@ -142,21 +143,25 @@ void SimpleEffortControl::setGoal(const trajectory_generator::TrajectoryPosition
         ROS_INFO_STREAM("Change LED from "<<!msg->led<<" to " << int(msg->led));
         tum_ics_skin_msgs::setSkinCellLedColor msgAlt;
         tum_ics_skin_msgs::SkinCellLedColor color;
-        color.cellId = 42;
+        color.cellId = 43;
         color.r = msg->led ? 255 : 0;
         color.g = msg->led ? 255 : 0;
         color.b = msg->led ? 255 : 0;
         msgAlt.request.color.push_back(color);
-        color.cellId = 43;
-        msgAlt.request.color.push_back(color);
-        color.cellId = 44;
-        msgAlt.request.color.push_back(color);
+        //color.cellId = 43;
+        //msgAlt.request.color.push_back(color);
+        //color.cellId = 44;
+        //msgAlt.request.color.push_back(color);
 
         srvModLED.call(msgAlt);
 
     }
     m_GoalX[1] = msg->x;
     m_GoalX[2] = msg->y;
+    m_GoalXp[1] = msg->vx;
+    m_GoalXp[2] = msg->vy;
+    m_GoalXpp[1] = msg->ax;
+    m_GoalXpp[2] = msg->ay;
     // ROS_INFO_STREAM("Tracking Goal: X Y LED"<< m_GoalX[1]<<", "<<m_GoalX[2]<<", "<<m_GoalLED);
 }
 

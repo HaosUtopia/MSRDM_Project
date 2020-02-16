@@ -3,10 +3,11 @@
 namespace trajectory_generator
 {
 
-TrajGen::TrajGen(const ros::NodeHandle& nh, double delta_t)
+TrajGen::TrajGen(const ros::NodeHandle& nh, double dt)
   : root_nh(nh)
   , traj_nh(nh, "trajectory_generator")
   , started(false)
+  , delta_t(dt)
 {
   ROS_INFO("Initializing trajectory generator...");
   
@@ -94,6 +95,10 @@ TrajGen::TrajGen(const ros::NodeHandle& nh, double delta_t)
   window_max_ds = window_max_v * delta_t;
   last_window_x = window_init_x;
   last_window_y = window_init_y;
+  last_window_vx = 0.0;
+  last_window_vy = 0.0;
+  last_window_ax = 0.0;
+  last_window_ay = 0.0;
   
   sub_point = root_nh.subscribe("finger_position", 100, &TrajGen::getPointCallback, this);
   srv_start = traj_nh.advertiseService("trajectory_start", &TrajGen::startTrajCallback, this);
@@ -112,7 +117,7 @@ TrajGen::~TrajGen()
 {
 }
 
-bool TrajGen::getCurrPos(double& ox, double& oy, bool& oled)
+bool TrajGen::getCurrPos(double& ox, double& oy, double& ovx, double& ovy, double& oax, double& oay, bool& oled)
 {
   boost::mutex::scoped_lock guard(traj_lock);
   
@@ -120,6 +125,10 @@ bool TrajGen::getCurrPos(double& ox, double& oy, bool& oled)
   {
     ox = trajectory.front().x;
     oy = trajectory.front().y;
+    ovx = trajectory.front().vx;
+    ovy = trajectory.front().vy;
+    oax = trajectory.front().ax;
+    oay = trajectory.front().ay;
     oled = trajectory.front().led;
     
     trajectory.erase(trajectory.begin());
@@ -159,8 +168,14 @@ void TrajGen::getPointCallback(const std_msgs::Int32MultiArray::ConstPtr& msg)
     {
       last_window_x += window_max_ds * (window_x - last_window_x) / distance;
       last_window_y += window_max_ds * (window_y - last_window_y) / distance;
+      window_vx = window_max_v * (window_x - last_window_x) / distance;
+      window_vy = window_max_v * (window_y - last_window_y) / distance;
+      last_window_ax = (window_vx - last_window_vx) / delta_t;
+      last_window_ay = (window_vy - last_window_vy) / delta_t;
+      last_window_vx = window_vx;
+      last_window_vy = window_vy;
       
-      trajectory.push_back(Position(last_window_x, last_window_y, false));
+      trajectory.push_back(Position(last_window_x, last_window_y, last_window_vx, last_window_vy, last_window_ax, last_window_ay, false));
       distance = sqrt(pow(window_y - last_window_y, 2) + pow(window_x - last_window_x, 2));
     }
   }
@@ -170,8 +185,14 @@ void TrajGen::getPointCallback(const std_msgs::Int32MultiArray::ConstPtr& msg)
     {
       last_window_x += window_max_ds * (window_x - last_window_x) / distance;
       last_window_y += window_max_ds * (window_y - last_window_y) / distance;
+      window_vx = window_max_v * (window_x - last_window_x) / distance;
+      window_vy = window_max_v * (window_y - last_window_y) / distance;
+      last_window_ax = (window_vx - last_window_vx) / delta_t;
+      last_window_ay = (window_vy - last_window_vy) / delta_t;
+      last_window_vx = window_vx;
+      last_window_vy = window_vy;
     
-      trajectory.push_back(Position(last_window_x, last_window_y, true));
+      trajectory.push_back(Position(last_window_x, last_window_y, last_window_vx, last_window_vy, last_window_ax, last_window_ay, true));
       distance = sqrt(pow(window_y - last_window_y, 2) + pow(window_x - last_window_x, 2));
     }
   }
@@ -180,7 +201,14 @@ void TrajGen::getPointCallback(const std_msgs::Int32MultiArray::ConstPtr& msg)
   {
     last_window_x = window_x;
     last_window_y = window_y;
-    trajectory.push_back(Position(last_window_x, last_window_y, true));
+    window_vx = window_max_v * (window_x - last_window_x) / distance;
+    window_vy = window_max_v * (window_y - last_window_y) / distance;
+    last_window_ax = (window_vx - last_window_vx) / delta_t;
+    last_window_ay = (window_vy - last_window_vy) / delta_t;
+    last_window_vx = window_vx;
+    last_window_vy = window_vy;
+
+    trajectory.push_back(Position(last_window_x, last_window_y, last_window_vx, last_window_vy, last_window_ax, last_window_ay, true));
   }
 }
 
