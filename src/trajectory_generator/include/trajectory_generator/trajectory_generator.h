@@ -74,6 +74,7 @@ private:
   double window_ay;
   double last_window_x;
   double last_window_y;
+  double last_window_v;
   double last_window_vx;
   double last_window_vy;
   double last_window_ax;
@@ -81,6 +82,7 @@ private:
   
   double window_d;
   double window_v;
+  double window_a;
   
   ros::NodeHandle root_nh;
   ros::NodeHandle traj_nh;
