@@ -201,6 +201,19 @@ void TrajGen::getPointCallback(const std_msgs::Int32MultiArray::ConstPtr& msg)
   
   boost::mutex::scoped_lock guard(traj_lock);
   
+  if (point_x == 1000)
+  {
+    last_window_x = trajectory.front().x;
+    last_window_y = trajectory.front().y;
+    last_window_vx = trajectory.front().vx;
+    last_window_vy = trajectory.front().vy;
+    last_window_ax = trajectory.front().ax;
+    last_window_ay = trajectory.front().ay;
+    trajectory.clear();
+    trajectory.push_back(Position(last_window_x, last_window_y, last_window_vx, last_window_vy, last_window_ax, last_window_ay, false));
+    trajectory.push_back(Position(100.0, 0.0, 0.0, 0.0, 0.0, 0.0, false));
+  }
+  
   window_d = sqrt(pow(window_y - last_window_y, 2) + pow(window_x - last_window_x, 2));
   
   if (window_d > window_max_d)
