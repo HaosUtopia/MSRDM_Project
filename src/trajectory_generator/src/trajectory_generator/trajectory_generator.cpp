@@ -150,9 +150,7 @@ bool TrajGen::getCurrPos(double& ox, double& oy, double& ovx, double& ovy, doubl
     return true;
   }
   else if(sqrt(pow(last_window_vx, 2) + pow(last_window_vy, 2)) > 0.0)
-  {
-    ROS_INFO("stop the trajectory");
-    
+  { 
     last_window_ax = (0.0 - last_window_vx) / delta_t;
     last_window_ay = (0.0 - last_window_vy) / delta_t;
     window_a = sqrt(pow(last_window_ax, 2) + pow(last_window_ay, 2));
@@ -179,6 +177,8 @@ bool TrajGen::getCurrPos(double& ox, double& oy, double& ovx, double& ovy, doubl
     }
     else
     {
+      ROS_INFO("stop the trajectory");
+      
       window_vx = 0.0;
       window_vy = 0.0;
       
@@ -349,67 +349,38 @@ void TrajGen::getPointCallback(const std_msgs::Int32MultiArray::ConstPtr& msg)
   }
   else
   {
-    last_window_ax = (window_x - last_window_x - last_window_vx * delta_t) * 2 / (delta_t * delta_t);
-    last_window_ay = (window_x - last_window_x - last_window_vx * delta_t) * 2 / (delta_t * delta_t);
-    window_a = sqrt(pow(last_window_ax, 2) + pow(last_window_ay, 2));
-    
-    while (window_a > window_max_a)
+    while (window_d > window_max_ds)
     {
-      last_window_ax *= window_max_a / window_a;
-      last_window_ay *= window_max_a / window_a;
-      window_vx = last_window_vx + last_window_ax * delta_t;
-      window_vy = last_window_vy + last_window_ay * delta_t;
-      window_v = sqrt(pow(window_vx, 2) + pow(window_vy, 2));
-      
-      if (window_v > window_max_v)
-      {
-        window_vx *= window_max_v / window_v;
-        window_vy *= window_max_v / window_v;
-        last_window_ax = (window_vx - last_window_vx) / delta_t;
-        last_window_ay = (window_vy - last_window_vy) / delta_t;
-      }
+      window_v = window_max_v;
+      window_vx = window_v * (window_x - last_window_x) / window_d;
+      window_vy = window_v * (window_y - last_window_y) / window_d;
+      last_window_ax = (window_vx - last_window_vx) / delta_t;
+      last_window_ay = (window_vy - last_window_vy) / delta_t;
+      window_a = sqrt(pow(last_window_ax, 2) + pow(last_window_ay, 2));
       
       trajectory.push_back(Position(last_window_x, last_window_y, last_window_vx, last_window_vy, last_window_ax, last_window_ay, true));
       
-      last_window_x += last_window_vx * delta_t + last_window_ax * delta_t * delta_t / 2;
-      last_window_y += last_window_vy * delta_t + last_window_ay * delta_t * delta_t / 2;
       last_window_vx = window_vx;
       last_window_vy = window_vy;
-      last_window_ax = (window_x - last_window_x - last_window_vx * delta_t) * 2 / (delta_t * delta_t);
-      last_window_ay = (window_x - last_window_x - last_window_vx * delta_t) * 2 / (delta_t * delta_t);
-      window_a = sqrt(pow(last_window_ax, 2) + pow(last_window_ay, 2));
+      last_window_x += window_max_ds * (window_x - last_window_x) / window_d;
+      last_window_y += window_max_ds * (window_y - last_window_y) / window_d;
+      window_d = sqrt(pow(window_y - last_window_y, 2) + pow(window_x - last_window_x, 2));
     }
     
-    window_vx = last_window_vx + last_window_ax * delta_t;
-    window_vy = last_window_vy + last_window_ay * delta_t;
-    window_v = sqrt(pow(window_vx, 2) + pow(window_vy, 2));
-    
-    while (window_v > window_max_v)
+    if (window_d > window_min_ds)
     {
-      window_vx *= window_max_v / window_v;
-      window_vy *= window_max_v / window_v;
+      window_vx = (window_x - last_window_x) / delta_t;
+      window_vy = (window_y - last_window_y) / delta_t;
       last_window_ax = (window_vx - last_window_vx) / delta_t;
       last_window_ay = (window_vy - last_window_vy) / delta_t;
       
       trajectory.push_back(Position(last_window_x, last_window_y, last_window_vx, last_window_vy, last_window_ax, last_window_ay, true));
       
-      last_window_x += last_window_vx * delta_t + last_window_ax * delta_t * delta_t / 2;
-      last_window_y += last_window_vy * delta_t + last_window_ay * delta_t * delta_t / 2;
       last_window_vx = window_vx;
       last_window_vy = window_vy;
-      last_window_ax = (window_x - last_window_x - last_window_vx * delta_t) * 2 / (delta_t * delta_t);
-      last_window_ay = (window_x - last_window_x - last_window_vx * delta_t) * 2 / (delta_t * delta_t);
-      window_vx = last_window_vx + last_window_ax * delta_t;
-      window_vy = last_window_vy + last_window_ay * delta_t;
-      window_v = sqrt(pow(window_vx, 2) + pow(window_vy, 2));
+      last_window_x = window_x;
+      last_window_y = window_y;
     }
-    
-    last_window_x += last_window_vx * delta_t + last_window_ax * delta_t * delta_t / 2;
-    last_window_y += last_window_vy * delta_t + last_window_ay * delta_t * delta_t / 2;
-    last_window_vx = window_vx;
-    last_window_vy = window_vy;
-    
-    trajectory.push_back(Position(last_window_x, last_window_y, last_window_vx, last_window_vy, last_window_ax, last_window_ay, true));
   }
 }
 // bool TrajGen::startTrajCallback(std_srvs::Empty::Request& req,
