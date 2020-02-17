@@ -4,6 +4,7 @@
 #include <cmath>
 #include <vector>
 #include <utility>
+#include <algorithm>
 #include <ros/ros.h>
 #include <boost/thread/mutex.hpp>
 
@@ -17,7 +18,7 @@ namespace trajectory_generator
 class TrajGen
 {
 public:
-  TrajGen(const ros::NodeHandle& nh, double delta_t);
+  TrajGen(const ros::NodeHandle& nh);
   ~TrajGen();
   
   bool getCurrPos(double& ox, double& oy, double& ovx, double& ovy, double& oax, double& oay, bool& oled);
@@ -40,10 +41,10 @@ protected:
 private:
   void lowPassFilter(double& value, const double& prev_value);
   void getPointCallback(const std_msgs::Int32MultiArray::ConstPtr& msg);
-  bool startTrajCallback(std_srvs::Empty::Request& req,
-                         std_srvs::Empty::Response& resp);
+  // bool startTrajCallback(std_srvs::Empty::Request& req,
+  //                        std_srvs::Empty::Response& resp);
   
-  bool started;
+  // bool started;
   double delta_t;
   
   double point_min_x;
@@ -56,6 +57,7 @@ private:
   double window_max_y;
   double window_init_x;
   double window_init_y;
+  double window_max_a; // maximum acceleration
   double window_min_v; // minimum velocity
   double window_max_v; // maximum velocity
   double window_min_ds; // minimum distance per step
@@ -68,6 +70,8 @@ private:
   double window_y;
   double window_vx;
   double window_vy;
+  double window_ax;
+  double window_ay;
   double last_window_x;
   double last_window_y;
   double last_window_vx;
@@ -75,7 +79,8 @@ private:
   double last_window_ax;
   double last_window_ay;
   
-  double distance;
+  double window_d;
+  double window_v;
   
   ros::NodeHandle root_nh;
   ros::NodeHandle traj_nh;
@@ -85,7 +90,7 @@ private:
   std::vector<Position> trajectory;
   
   ros::Subscriber sub_point;
-  ros::ServiceServer srv_start;
+  // ros::ServiceServer srv_start;
 
 };
 

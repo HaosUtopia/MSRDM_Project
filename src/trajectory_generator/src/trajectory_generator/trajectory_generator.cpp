@@ -3,15 +3,21 @@
 namespace trajectory_generator
 {
 
-TrajGen::TrajGen(const ros::NodeHandle& nh, double dt)
+TrajGen::TrajGen(const ros::NodeHandle& nh)
   : root_nh(nh)
   , traj_nh(nh, "trajectory_generator")
-  , started(false)
-  , delta_t(dt)
+  // , started(false)
 {
   ROS_INFO("Initializing trajectory generator...");
   
   bool ok = true;
+  
+  double publish_rate;
+  if (!traj_nh.getParam("publish_rate", publish_rate))
+  {
+    ROS_ERROR_STREAM("Could not find 'publish_rate' parameter (namespace: " << traj_nh.getNamespace() << ").");
+    ok = false;
+  }
   
   if (!traj_nh.getParam("point_min_x", point_min_x))
   {
@@ -73,6 +79,12 @@ TrajGen::TrajGen(const ros::NodeHandle& nh, double dt)
     ok = false;
   }
   
+  if (!traj_nh.getParam("window_max_a", window_max_a))
+  {
+    ROS_ERROR_STREAM("Could not find 'window_max_a' parameter (namespace: " << traj_nh.getNamespace() << ").");
+    ok = false;
+  }
+  
   if (!traj_nh.getParam("window_min_v", window_min_v))
   {
     ROS_ERROR_STREAM("Could not find 'window_min_v' parameter (namespace: " << traj_nh.getNamespace() << ").");
@@ -91,6 +103,7 @@ TrajGen::TrajGen(const ros::NodeHandle& nh, double dt)
     ok = false;
   }
   
+  delta_t = 1.0 / publish_rate;
   window_min_ds = window_min_v * delta_t;
   window_max_ds = window_max_v * delta_t;
   last_window_x = window_init_x;
@@ -99,9 +112,10 @@ TrajGen::TrajGen(const ros::NodeHandle& nh, double dt)
   last_window_vy = 0.0;
   last_window_ax = 0.0;
   last_window_ay = 0.0;
+  window_v = 0.0;
   
   sub_point = root_nh.subscribe("finger_position", 100, &TrajGen::getPointCallback, this);
-  srv_start = traj_nh.advertiseService("trajectory_start", &TrajGen::startTrajCallback, this);
+  // srv_start = traj_nh.advertiseService("trajectory_start", &TrajGen::startTrajCallback, this);
   
   if (ok)
   {
@@ -160,64 +174,111 @@ void TrajGen::getPointCallback(const std_msgs::Int32MultiArray::ConstPtr& msg)
   
   boost::mutex::scoped_lock guard(traj_lock);
   
-  distance = sqrt(pow(window_y - last_window_y, 2) + pow(window_x - last_window_x, 2));
+  window_d = sqrt(pow(window_y - last_window_y, 2) + pow(window_x - last_window_x, 2));
   
-  if (distance > window_max_d)
+  if (window_d > window_max_d)
   {
-    while (distance > window_max_ds)
+    while (window_d > window_max_v * window_max_v / (window_max_a * 2))
     {
-      last_window_x += window_max_ds * (window_x - last_window_x) / distance;
-      last_window_y += window_max_ds * (window_y - last_window_y) / distance;
-      window_vx = window_max_v * (window_x - last_window_x) / distance;
-      window_vy = window_max_v * (window_y - last_window_y) / distance;
+      window_v = std::min(window_max_v, window_v + window_max_a * delta_t);
+      window_vx = window_v * (window_x - last_window_x) / window_d;
+      window_vy = window_v * (window_y - last_window_y) / window_d;
       last_window_ax = (window_vx - last_window_vx) / delta_t;
       last_window_ay = (window_vy - last_window_vy) / delta_t;
       last_window_vx = window_vx;
       last_window_vy = window_vy;
+      last_window_x += window_vx * delta_t + window_max_a * delta_t * delta_t / 2;
+      last_window_y += window_vy * delta_t + window_max_a * delta_t * delta_t / 2;
       
       trajectory.push_back(Position(last_window_x, last_window_y, last_window_vx, last_window_vy, last_window_ax, last_window_ay, false));
-      distance = sqrt(pow(window_y - last_window_y, 2) + pow(window_x - last_window_x, 2));
+      window_d = sqrt(pow(window_y - last_window_y, 2) + pow(window_x - last_window_x, 2));
     }
-  }
-  else if (distance > window_max_ds)
-  {
-    while (distance > window_max_ds)
+    
+    while (window_d > window_max_a * delta_t * delta_t / 2)
     {
-      last_window_x += window_max_ds * (window_x - last_window_x) / distance;
-      last_window_y += window_max_ds * (window_y - last_window_y) / distance;
-      window_vx = window_max_v * (window_x - last_window_x) / distance;
-      window_vy = window_max_v * (window_y - last_window_y) / distance;
+      window_v = window_v - window_max_a * delta_t;
+      window_vx = window_v * (window_x - last_window_x) / window_d;
+      window_vy = window_v * (window_y - last_window_y) / window_d;
       last_window_ax = (window_vx - last_window_vx) / delta_t;
       last_window_ay = (window_vy - last_window_vy) / delta_t;
       last_window_vx = window_vx;
       last_window_vy = window_vy;
-    
-      trajectory.push_back(Position(last_window_x, last_window_y, last_window_vx, last_window_vy, last_window_ax, last_window_ay, true));
-      distance = sqrt(pow(window_y - last_window_y, 2) + pow(window_x - last_window_x, 2));
+      last_window_x += window_vx * delta_t - last_window_ax * delta_t * delta_t / 2;
+      last_window_y += window_vy * delta_t - last_window_ay * delta_t * delta_t / 2;
+      
+      trajectory.push_back(Position(last_window_x, last_window_y, last_window_vx, last_window_vy, last_window_ax, last_window_ay, false));
+      window_d = sqrt(pow(window_y - last_window_y, 2) + pow(window_x - last_window_x, 2));
     }
-  }
-  
-  if (distance > window_min_ds)
-  {
-    last_window_x = window_x;
-    last_window_y = window_y;
-    window_vx = window_max_v * (window_x - last_window_x) / distance;
-    window_vy = window_max_v * (window_y - last_window_y) / distance;
+    
+    window_v = window_d / delta_t * 2;
+    window_vx = window_v * (window_x - last_window_x) / window_d;
+    window_vy = window_v * (window_y - last_window_y) / window_d;
     last_window_ax = (window_vx - last_window_vx) / delta_t;
     last_window_ay = (window_vy - last_window_vy) / delta_t;
     last_window_vx = window_vx;
     last_window_vy = window_vy;
-
-    trajectory.push_back(Position(last_window_x, last_window_y, last_window_vx, last_window_vy, last_window_ax, last_window_ay, true));
+    last_window_x += window_vx * delta_t - last_window_ax * delta_t * delta_t / 2;
+    last_window_y += window_vy * delta_t - last_window_ay * delta_t * delta_t / 2;
+    
+    trajectory.push_back(Position(last_window_x, last_window_y, last_window_vx, last_window_vy, last_window_ax, last_window_ay, false));
+    window_d = sqrt(pow(window_y - last_window_y, 2) + pow(window_x - last_window_x, 2));
+    
+    window_v = 0.0;
+    window_vx = 0.0;
+    window_vy = 0.0;
+    last_window_ax = 0.0;
+    last_window_ay = 0.0;
+    last_window_vx = window_vx;
+    last_window_vy = window_vy;
+    last_window_x = window_x;
+    last_window_y = window_y;
+    
+    trajectory.push_back(Position(last_window_x, last_window_y, last_window_vx, last_window_vy, last_window_ax, last_window_ay, false));
+    window_d = sqrt(pow(window_y - last_window_y, 2) + pow(window_x - last_window_x, 2));
+    
+    
   }
-}
+  else
+  {
+    while (window_d > window_max_ds)
+    {
+      window_v = std::min(window_max_v, window_v + window_max_a * delta_t);
+      window_vx = window_v * (window_x - last_window_x) / window_d;
+      window_vy = window_v * (window_y - last_window_y) / window_d;
+      last_window_ax = (window_vx - last_window_vx) / delta_t;
+      last_window_ay = (window_vy - last_window_vy) / delta_t;
+      last_window_vx = window_vx;
+      last_window_vy = window_vy;
+      last_window_x += window_vx * delta_t;
+      last_window_y += window_vy * delta_t;
+    
+      trajectory.push_back(Position(last_window_x, last_window_y, last_window_vx, last_window_vy, last_window_ax, last_window_ay, true));
+      window_d = sqrt(pow(window_y - last_window_y, 2) + pow(window_x - last_window_x, 2));
+    }
+    
+    if (window_d > window_min_ds)
+    {
+      window_v = std::min(window_max_v, window_v + window_max_a * delta_t);
+      window_vx = window_v * (window_x - last_window_x) / window_d;
+      window_vy = window_v * (window_y - last_window_y) / window_d;
+      last_window_ax = (window_vx - last_window_vx) / delta_t;
+      last_window_ay = (window_vy - last_window_vy) / delta_t;
+      last_window_vx = window_vx;
+      last_window_vy = window_vy;
+      last_window_x = window_x;
+      last_window_y = window_y;
 
-bool TrajGen::startTrajCallback(std_srvs::Empty::Request& req,
-                                std_srvs::Empty::Response& resp)
-{
-  started = true;
+      trajectory.push_back(Position(last_window_x, last_window_y, last_window_vx, last_window_vy, last_window_ax, last_window_ay, true));
+    }
+  }
   
-  return true;
 }
+// bool TrajGen::startTrajCallback(std_srvs::Empty::Request& req,
+//                                 std_srvs::Empty::Response& resp)
+// {
+//   started = true;
+//   
+//   return true;
+// }
 
 }
