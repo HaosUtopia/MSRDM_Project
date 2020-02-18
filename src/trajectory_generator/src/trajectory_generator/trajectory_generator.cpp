@@ -212,6 +212,7 @@ void TrajGen::getPointCallback(const std_msgs::Int32MultiArray::ConstPtr& msg)
     trajectory.clear();
     trajectory.push_back(Position(last_window_x, last_window_y, last_window_vx, last_window_vy, last_window_ax, last_window_ay, false));
     trajectory.push_back(Position(100.0, 0.0, 0.0, 0.0, 0.0, 0.0, false));
+    return;
   }
   
   window_d = sqrt(pow(window_y - last_window_y, 2) + pow(window_x - last_window_x, 2));
@@ -224,13 +225,18 @@ void TrajGen::getPointCallback(const std_msgs::Int32MultiArray::ConstPtr& msg)
     last_window_ax = (window_vx - last_window_vx) / delta_t;
     last_window_ay = (window_vy - last_window_vy) / delta_t;
     window_a = sqrt(pow(last_window_ax, 2) + pow(last_window_ay, 2));
+    
+    if (window_a > window_max_a)
+    {
+      ROS_WARN_STREAM("Acceleration is: " << window_a);
+    }
       
     trajectory.push_back(Position(last_window_x, last_window_y, last_window_vx, last_window_vy, last_window_ax, last_window_ay, true));
-      
+    
+    last_window_x += last_window_vx * delta_t + last_window_ax * delta_t * delta_t;
+    last_window_y += last_window_vy * delta_t + last_window_ay * delta_t * delta_t;
     last_window_vx = window_vx;
     last_window_vy = window_vy;
-    last_window_x += window_max_ds * (window_x - last_window_x) / window_d;
-    last_window_y += window_max_ds * (window_y - last_window_y) / window_d;
     window_d = sqrt(pow(window_y - last_window_y, 2) + pow(window_x - last_window_x, 2));
       
     while (window_d > window_max_ds)
@@ -249,19 +255,19 @@ void TrajGen::getPointCallback(const std_msgs::Int32MultiArray::ConstPtr& msg)
       
       trajectory.push_back(Position(last_window_x, last_window_y, last_window_vx, last_window_vy, last_window_ax, last_window_ay, false));
       
+      last_window_x += last_window_vx * delta_t + last_window_ax * delta_t * delta_t;
+      last_window_y += last_window_vy * delta_t + last_window_ay * delta_t * delta_t;
       last_window_vx = window_vx;
       last_window_vy = window_vy;
-      last_window_x += window_max_ds * (window_x - last_window_x) / window_d;
-      last_window_y += window_max_ds * (window_y - last_window_y) / window_d;
       window_d = sqrt(pow(window_y - last_window_y, 2) + pow(window_x - last_window_x, 2));
     }
     
     if (window_d > window_min_ds)
     {
-      window_vx = (window_x - last_window_x) / delta_t;
-      window_vy = (window_y - last_window_y) / delta_t;
-      last_window_ax = (window_vx - last_window_vx) / delta_t;
-      last_window_ay = (window_vy - last_window_vy) / delta_t;
+      last_window_ax = (window_x - last_window_x - last_window_vx * delta_t) * 2 / (delta_t * delta_t);
+      last_window_ay = (window_y - last_window_y - last_window_vy * delta_t) * 2 / (delta_t * delta_t);
+      window_vx = last_window_vx + last_window_ax * delta_t;
+      window_vy = last_window_vy + last_window_ay * delta_t;
       window_a = sqrt(pow(last_window_ax, 2) + pow(last_window_ay, 2));
       
       if (window_a > window_max_a)
@@ -296,19 +302,19 @@ void TrajGen::getPointCallback(const std_msgs::Int32MultiArray::ConstPtr& msg)
       
       trajectory.push_back(Position(last_window_x, last_window_y, last_window_vx, last_window_vy, last_window_ax, last_window_ay, true));
       
+      last_window_x += last_window_vx * delta_t + last_window_ax * delta_t * delta_t;
+      last_window_y += last_window_vy * delta_t + last_window_ay * delta_t * delta_t;
       last_window_vx = window_vx;
       last_window_vy = window_vy;
-      last_window_x += window_max_ds * (window_x - last_window_x) / window_d;
-      last_window_y += window_max_ds * (window_y - last_window_y) / window_d;
       window_d = sqrt(pow(window_y - last_window_y, 2) + pow(window_x - last_window_x, 2));
     }
     
     if (window_d > window_min_ds)
     {
-      window_vx = (window_x - last_window_x) / delta_t;
-      window_vy = (window_y - last_window_y) / delta_t;
-      last_window_ax = (window_vx - last_window_vx) / delta_t;
-      last_window_ay = (window_vy - last_window_vy) / delta_t;
+      last_window_ax = (window_x - last_window_x - last_window_vx * delta_t) * 2 / (delta_t * delta_t);
+      last_window_ay = (window_y - last_window_y - last_window_vy * delta_t) * 2 / (delta_t * delta_t);
+      window_vx = last_window_vx + last_window_ax * delta_t;
+      window_vy = last_window_vy + last_window_ay * delta_t;
       window_a = sqrt(pow(last_window_ax, 2) + pow(last_window_ay, 2));
       
       if (window_a > window_max_a)
