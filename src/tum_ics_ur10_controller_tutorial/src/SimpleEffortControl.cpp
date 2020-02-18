@@ -103,12 +103,15 @@ SimpleEffortControl::SimpleEffortControl(double weight, const QString &name):
     Theta(53,0) = b5;
     Theta(54,0) = b6;
 
-    pubCtrlData=n.advertise<tum_ics_ur_robot_msgs::ControlData>("SimpleEffortCtrlData",100);
+    pubCtrlData = n.advertise<tum_ics_ur_robot_msgs::ControlData>("SimpleEffortCtrlData",100);
     subGoal = n.subscribe("/trajectory_generator/position",100,&SimpleEffortControl::setGoal,this);
     srvStart = n.serviceClient<std_srvs::Empty>("/trajectory_start");
     srvModLED = n.serviceClient<tum_ics_skin_msgs::setSkinCellLedColor>("/setSkinCellLedColor");
+    pubPath = n.advertise<nav_msgs::Path>("drawing_path",100);
 
     J_.setZero();
+
+    path.header.frame_id = "world";
 
     //m_controlPeriod=0.002; //set the control period to the standard 2 ms
     //m_controlPeriod_2=m_controlPeriod/2.0;
@@ -155,6 +158,10 @@ void SimpleEffortControl::setGoal(const trajectory_generator::TrajectoryPosition
 
         srvModLED.call(msgAlt);
 
+    }
+    if(msg->x>=100){
+        path.poses.clear();
+        return;
     }
     m_GoalX[1] = msg->x;
     m_GoalX[2] = msg->y;
@@ -703,6 +710,8 @@ Vector6d SimpleEffortControl::update(const RobotTime &time, const JointState &cu
     Matrix3d Jv_tmp;
     Eigen::Matrix<double,3,6> Jv;
     
+    
+    geometry_msgs::PoseStamped curr_pose;
 
     /*
     Vector6d deltaQ;
@@ -903,6 +912,23 @@ Vector6d SimpleEffortControl::update(const RobotTime &time, const JointState &cu
         case TRACKING:
         {
         	curr_cartPos = FK(current.q);
+
+            curr_pose.header.stamp = ros::Time::now();
+            curr_pose.header.frame_id = "world";
+
+            curr_pose.pose.position.x = curr_cartPos[0];
+            curr_pose.pose.position.y = curr_cartPos[1];
+            curr_pose.pose.position.z = curr_cartPos[2];
+            curr_pose.pose.orientation.x = curr_cartPos[3];
+            curr_pose.pose.orientation.y = curr_cartPos[4];
+            curr_pose.pose.orientation.z = curr_cartPos[5];
+            curr_pose.pose.orientation.w = curr_cartPos[6];
+
+            if(m_GoalLED){
+                path.poses.push_back(curr_pose);
+            }
+            pubPath.publish(path);
+
             m_J = Jacobian(current.q);
             Jv = m_J.block(0,0,3,m_J.cols());
             
@@ -954,6 +980,7 @@ Vector6d SimpleEffortControl::update(const RobotTime &time, const JointState &cu
             js_r = current;
             js_r.qp = m_invJ*Xrp;
             js_r.qpp = m_invJ_d*Xrp + m_invJ*Xrpp;
+            js_r.qpp.setZero();
             
             Sq = current.qp-js_r.qp;
 

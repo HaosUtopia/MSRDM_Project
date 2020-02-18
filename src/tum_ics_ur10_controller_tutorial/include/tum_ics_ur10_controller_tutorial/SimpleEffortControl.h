@@ -5,6 +5,8 @@
 #include <trajectory_generator/TrajectoryPosition.h>
 #include <tum_ics_skin_msgs/setSkinCellLedColor.h>
 #include <std_srvs/Empty.h>
+#include <nav_msgs/Path.h>
+#include <geometry_msgs/Pose.h>
 
 namespace tum_ics_ur_robot_lli{
 namespace RobotControllers{
@@ -39,6 +41,7 @@ private:
 
     ros::NodeHandle n;
     ros::Publisher pubCtrlData;
+    ros::Publisher pubPath;
     ros::Subscriber subGoal;
     ros::ServiceClient srvStart;
     ros::ServiceClient srvModLED;
@@ -100,6 +103,9 @@ private:
     Vector6d Sq;
     
     Vector6d tau;
+    
+    
+    nav_msgs::Path path;
 
     // Member Methods
     void setGoal(const trajectory_generator::TrajectoryPosition::ConstPtr& msg);
@@ -122,7 +128,6 @@ private:
     bool start();
     Vector6d update(const RobotTime& time, const JointState &current);
     bool stop();
-
 
 };
 
