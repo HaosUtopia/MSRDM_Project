@@ -132,7 +132,7 @@ int main(int argc, char *argv[])
 	            switch(ev.code){
 	            	case EVENT_CODE_X:  if(currX!=ev.value)
                                         {
-                                            if(currX!=-1 && abs(currX - ev.value)>200)
+                                            if(currX!=-1 && abs(currX - ev.value)>300)
                                                 largeDistX = true;
 
                                             currX = ev.value;
@@ -143,7 +143,7 @@ int main(int argc, char *argv[])
 	            	case EVENT_CODE_Y:  
                                         if(currY!=ev.value)
                                         {
-                                            if(currY!=-1 && abs(currY - ev.value)>200)
+                                            if(currY!=-1 && abs(currY - ev.value)>300)
                                                 largeDistY = true;
                                             currY = ev.value;
                                             newY = true;
