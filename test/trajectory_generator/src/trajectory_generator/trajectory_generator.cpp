@@ -232,6 +232,7 @@ bool TrajGen::getCurrPos(double& ox, double& oy, double& ovx, double& ovy, doubl
     oax = last_window_ax;
     oay = last_window_ay;
     oled = false;
+    return true;
   }
   else
   {
