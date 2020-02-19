@@ -85,10 +85,6 @@ private:
   double last_window_ay;
   double curr_window_x;
   double curr_window_y;
-  double curr_window_vx;
-  double curr_window_vy;
-  double curr_window_ax;
-  double curr_window_ay;
   
   double window_d;
   double window_a;

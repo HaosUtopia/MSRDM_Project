@@ -121,10 +121,6 @@ TrajGen::TrajGen(const ros::NodeHandle& nh)
   last_window_ay = 0.0;
   curr_window_x = window_init_x;
   curr_window_y = window_init_y;
-  curr_window_vx = 0.0;
-  curr_window_vy = 0.0;
-  curr_window_ax = 0.0;
-  curr_window_ay = 0.0;
   
   ROS_INFO("Initializing opetimizer parameters...");
   cost_param = new double[optimize_num * 2 + 4];
@@ -190,33 +186,53 @@ bool TrajGen::getCurrPos(double& ox, double& oy, double& ovx, double& ovy, doubl
     
     return true;
   }
-//  else if(sqrt(pow(last_window_vx, 2) + pow(last_window_vy, 2)) > 0.0)
-//  {
-//    ROS_INFO("stop the trajectory");
-//    window_vx = 0.0;
-//    window_vy = 0.0;
-//    last_window_ax = (window_vx - last_window_vx) / delta_t;
-//    last_window_ay = (window_vx - last_window_vy) / delta_t;
-//    window_a = sqrt(pow(last_window_ax, 2) + pow(last_window_ay, 2));
-//      
-//    if (window_a > window_max_a)
-//    {
-//      ROS_WARN_STREAM("Acceleration is: " << window_a);
-//    }
-//    
-//    ox = last_window_x;
-//    oy = last_window_y;
-//    ovx = last_window_vx;
-//    ovy = last_window_vy;
-//    oax = last_window_ax;
-//    oay = last_window_ay;
-//    oled = false;
-//    
-//    last_window_x += last_window_vx * delta_t + last_window_ax * delta_t * delta_t / 2;
-//    last_window_y += last_window_vy * delta_t + last_window_ay * delta_t * delta_t / 2;
-//    last_window_vx = window_vx;
-//    last_window_vy = window_vy;
-//  }
+  else if (!opt_buffer.empty())
+  {
+    optProcess();
+    
+    ox = trajectory.front().x;
+    oy = trajectory.front().y;
+    ovx = trajectory.front().vx;
+    ovy = trajectory.front().vy;
+    oax = trajectory.front().ax;
+    oay = trajectory.front().ay;
+    oled = trajectory.front().led;
+    
+    trajectory.erase(trajectory.begin());
+    
+    return true;
+  }
+  else if(sqrt(pow(last_window_vx, 2) + pow(last_window_vy, 2)) > 0.0)
+  {
+    ROS_INFO("stop the trajectory");
+    window_vx = 0.0;
+    window_vy = 0.0;
+    last_window_ax = (0.0 - last_window_vx) / delta_t;
+    last_window_ay = (0.0 - last_window_vy) / delta_t;
+    window_a = sqrt(pow(last_window_ax, 2) + pow(last_window_ay, 2));
+      
+    if (window_a > window_max_a)
+    {
+      ROS_WARN_STREAM("Acceleration is: " << window_a);
+      last_window_ax *= window_max_a / window_a;
+      last_window_ay *= window_max_a / window_a;
+    }
+    
+    last_window_x += last_window_vx * delta_t + last_window_ax * delta_t * delta_t / 2;
+    last_window_y += last_window_vy * delta_t + last_window_ay * delta_t * delta_t / 2;
+    last_window_vx += last_window_ax * delta_t;
+    last_window_vy += last_window_ay * delta_t;
+    curr_window_x = last_window_x;
+    curr_window_y = last_window_y;
+    
+    ox = last_window_x;
+    oy = last_window_y;
+    ovx = last_window_vx;
+    ovy = last_window_vy;
+    oax = last_window_ax;
+    oay = last_window_ay;
+    oled = false;
+  }
   else
   {
     return false;
@@ -363,6 +379,12 @@ void TrajGen::optProcess()
 {
   ROS_INFO("Run optimization...");
   
+  if (opt_buffer.empty())
+  {
+    ROS_WARN("Buffer for optimization is empty, can not optimize");
+    return;
+  }
+  
   optimizer = nlopt::opt(nlopt::LD_SLSQP, opt_buffer.size() * 2);
   acc.resize(opt_buffer.size() * 2);
   
@@ -409,7 +431,7 @@ void TrajGen::optProcess()
     vel_param[i][1] = last_window_vx;
     vel_param[i][2] = last_window_vy;
     
-    //optimizer.add_inequality_constraint(accConstraint, acc_param[i], 1e-4);
+    optimizer.add_inequality_constraint(accConstraint, acc_param[i], 1e-8);
     optimizer.add_inequality_constraint(velConstraint, vel_param[i], 1e-8);
   }
   
@@ -452,19 +474,17 @@ void TrajGen::getPointCallback(const std_msgs::Int32MultiArray::ConstPtr& msg)
   
   if (point_x == 10000)
   {
-    curr_window_x = trajectory.front().x;
-    curr_window_y = trajectory.front().y;
-    curr_window_vx = trajectory.front().vx;
-    curr_window_vy = trajectory.front().vy;
-    curr_window_ax = trajectory.front().ax;
-    curr_window_ay = trajectory.front().ay;
-    last_window_x = curr_window_x;
-    last_window_y = curr_window_y;
-    last_window_vx = curr_window_vx;
-    last_window_vy = curr_window_vy;
+    last_window_x = trajectory.front().x;
+    last_window_y = trajectory.front().y;
+    last_window_vx = trajectory.front().vx;
+    last_window_vy = trajectory.front().vy;
+    last_window_ax = trajectory.front().ax;
+    last_window_ay = trajectory.front().ay;
+    curr_window_x = last_window_x;
+    curr_window_y = last_window_y;
     opt_buffer.clear();
     trajectory.clear();
-    trajectory.push_back(Position(curr_window_x, curr_window_y, curr_window_vx, curr_window_vy, curr_window_ax, curr_window_ay, false));
+    trajectory.push_back(Position(last_window_x, last_window_y, last_window_vx, last_window_vy, last_window_ax, last_window_ay, false));
     trajectory.push_back(Position(100.0, 0.0, 0.0, 0.0, 0.0, 0.0, false));
     return;
   }
