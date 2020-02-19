@@ -980,7 +980,7 @@ Vector6d SimpleEffortControl::update(const RobotTime &time, const JointState &cu
             js_r = current;
             js_r.qp = m_invJ*Xrp;
             js_r.qpp = m_invJ_d*Xrp + m_invJ*Xrpp;
-            js_r.qpp.setZero();
+            //js_r.qpp.setZero();
             
             Sq = current.qp-js_r.qp;
 
