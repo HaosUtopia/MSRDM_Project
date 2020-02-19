@@ -40,13 +40,16 @@ protected:
   };
   
 private:
-  static double costFunction(const std::vector<double> &a, std::vector<double> &grad, void* data);
+  static double costFunction(const std::vector<double> &a, std::vector<double> &grad, void* param);
+  static double accConstraint(const std::vector<double> &a, std::vector<double> &grad, void* param);
+  static double velConstraint(const std::vector<double> &a, std::vector<double> &grad, void* param);
+  void optProcess();
   void getPointCallback(const std_msgs::Int32MultiArray::ConstPtr& msg);
   // bool startTrajCallback(std_srvs::Empty::Request& req,
   //                        std_srvs::Empty::Response& resp);
   
   // bool started;
-  double delta_t;
+  static double delta_t;
   
   double point_min_x;
   double point_max_x;
@@ -61,6 +64,7 @@ private:
   double window_max_a; // maximum acceleration
   double window_min_v; // minimum velocity
   double window_max_v; // maximum velocity
+  double window_normal_v; // normal velocity
   double window_min_ds; // minimum distance per step
   double window_max_ds; // maximum distance per step
   double window_max_d; // maximum distance inside a trajectory
@@ -75,17 +79,26 @@ private:
   double window_ay;
   double last_window_x;
   double last_window_y;
-  double last_window_v;
   double last_window_vx;
   double last_window_vy;
   double last_window_ax;
   double last_window_ay;
+  double curr_window_x;
+  double curr_window_y;
+  double curr_window_vx;
+  double curr_window_vy;
+  double curr_window_ax;
+  double curr_window_ay;
   
   double window_d;
-  double window_v;
   double window_a;
   
+  double* cost_param;
+  double** acc_param;
+  double** vel_param;
   int optimize_num;
+  std::vector<double> acc;
+  std::vector<Position> opt_buffer;
   nlopt::opt optimizer;
   
   ros::NodeHandle root_nh;
@@ -99,6 +112,8 @@ private:
   // ros::ServiceServer srv_start;
 
 };
+
+double TrajGen::delta_t = 0.02;
 
 }
 
