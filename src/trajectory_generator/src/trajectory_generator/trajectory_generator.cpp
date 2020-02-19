@@ -79,12 +79,6 @@ TrajGen::TrajGen(const ros::NodeHandle& nh)
     ok = false;
   }
   
-  if (!traj_nh.getParam("window_max_a", window_max_a))
-  {
-    ROS_ERROR_STREAM("Could not find 'window_max_a' parameter (namespace: " << traj_nh.getNamespace() << ").");
-    ok = false;
-  }
-  
   if (!traj_nh.getParam("window_min_v", window_min_v))
   {
     ROS_ERROR_STREAM("Could not find 'window_min_v' parameter (namespace: " << traj_nh.getNamespace() << ").");
@@ -106,6 +100,7 @@ TrajGen::TrajGen(const ros::NodeHandle& nh)
   delta_t = 1.0 / publish_rate;
   window_min_ds = window_min_v * delta_t;
   window_max_ds = window_max_v * delta_t;
+  window_max_a = window_max_v / delta_t;
   last_window_x = window_init_x;
   last_window_y = window_init_y;
   last_window_vx = 0.0;
