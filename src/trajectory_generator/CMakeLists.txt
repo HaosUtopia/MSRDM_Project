@@ -17,6 +17,7 @@ find_package(catkin REQUIRED COMPONENTS
 ## System dependencies are found with CMake's conventions
 find_package(Boost REQUIRED COMPONENTS thread)
 
+FIND_LIBRARY(EXT_LIBRARY nlopt /usr/local/lib/)
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -107,7 +108,7 @@ catkin_package(
   INCLUDE_DIRS include
   LIBRARIES trajectory_generator
   CATKIN_DEPENDS roscpp 
-  DEPENDS Boost
+  DEPENDS Boost nlopt
 )
 
 ###########
@@ -130,6 +131,7 @@ add_library(${PROJECT_NAME}
 target_link_libraries(${PROJECT_NAME}
   ${catkin_LIBRARIES}
   ${Boost_LIBRARIES}
+  ${EXT_LIBRARY}
 )
 
 ## Add cmake target dependencies of the library
